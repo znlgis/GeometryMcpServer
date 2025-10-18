@@ -1,0 +1,2 @@
+# GeometryMcpServer
+Geometry Mcp Server
