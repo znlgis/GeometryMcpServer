@@ -1,5 +1,7 @@
 # Geometry MCP Server
 
+> **📦 Maven Multi-Module Project** - This project now uses Maven multi-module structure. See [QUICKSTART.md](./QUICKSTART.md) for build instructions.
+
 [English](#english) | [中文](#中文)
 
 ---
