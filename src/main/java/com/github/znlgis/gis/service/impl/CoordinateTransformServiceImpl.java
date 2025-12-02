@@ -90,9 +90,62 @@ public class CoordinateTransformServiceImpl implements CoordinateTransformServic
             transformed[i] = new Coordinate(dst.x, dst.y);
         }
         
-        return geometryFactory.createGeometry(geom).getFactory().createGeometry(
-            geom.getFactory().createLineString(transformed).getEnvelope()
-        );
+        // Preserve geometry type by reconstructing with transformed coordinates
+        if (geom instanceof org.locationtech.jts.geom.Point) {
+            return geometryFactory.createPoint(transformed[0]);
+        } else if (geom instanceof org.locationtech.jts.geom.LineString) {
+            return geometryFactory.createLineString(transformed);
+        } else if (geom instanceof org.locationtech.jts.geom.Polygon polygon) {
+            // Reconstruct polygon with exterior ring and holes
+            org.locationtech.jts.geom.LinearRing shell = geometryFactory.createLinearRing(
+                transformRingCoordinates(polygon.getExteriorRing().getCoordinates(), transform)
+            );
+            org.locationtech.jts.geom.LinearRing[] holes = new org.locationtech.jts.geom.LinearRing[polygon.getNumInteriorRing()];
+            for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
+                holes[i] = geometryFactory.createLinearRing(
+                    transformRingCoordinates(polygon.getInteriorRingN(i).getCoordinates(), transform)
+                );
+            }
+            return geometryFactory.createPolygon(shell, holes);
+        } else if (geom instanceof org.locationtech.jts.geom.MultiPoint) {
+            org.locationtech.jts.geom.Point[] points = new org.locationtech.jts.geom.Point[geom.getNumGeometries()];
+            for (int i = 0; i < geom.getNumGeometries(); i++) {
+                points[i] = (org.locationtech.jts.geom.Point) transformGeometry(geom.getGeometryN(i), transform);
+            }
+            return geometryFactory.createMultiPoint(points);
+        } else if (geom instanceof org.locationtech.jts.geom.MultiLineString) {
+            org.locationtech.jts.geom.LineString[] lines = new org.locationtech.jts.geom.LineString[geom.getNumGeometries()];
+            for (int i = 0; i < geom.getNumGeometries(); i++) {
+                lines[i] = (org.locationtech.jts.geom.LineString) transformGeometry(geom.getGeometryN(i), transform);
+            }
+            return geometryFactory.createMultiLineString(lines);
+        } else if (geom instanceof org.locationtech.jts.geom.MultiPolygon) {
+            org.locationtech.jts.geom.Polygon[] polygons = new org.locationtech.jts.geom.Polygon[geom.getNumGeometries()];
+            for (int i = 0; i < geom.getNumGeometries(); i++) {
+                polygons[i] = (org.locationtech.jts.geom.Polygon) transformGeometry(geom.getGeometryN(i), transform);
+            }
+            return geometryFactory.createMultiPolygon(polygons);
+        } else if (geom instanceof org.locationtech.jts.geom.GeometryCollection) {
+            Geometry[] geometries = new Geometry[geom.getNumGeometries()];
+            for (int i = 0; i < geom.getNumGeometries(); i++) {
+                geometries[i] = transformGeometry(geom.getGeometryN(i), transform);
+            }
+            return geometryFactory.createGeometryCollection(geometries);
+        }
+        
+        // Default fallback - create new geometry from transformed coordinates
+        return geometryFactory.createLineString(transformed);
+    }
+    
+    private Coordinate[] transformRingCoordinates(Coordinate[] coords, CoordinateTransform transform) {
+        Coordinate[] transformed = new Coordinate[coords.length];
+        for (int i = 0; i < coords.length; i++) {
+            ProjCoordinate src = new ProjCoordinate(coords[i].x, coords[i].y);
+            ProjCoordinate dst = new ProjCoordinate();
+            transform.transform(src, dst);
+            transformed[i] = new Coordinate(dst.x, dst.y);
+        }
+        return transformed;
     }
     
     @Override

@@ -550,17 +550,22 @@ public final class GeoJsonUtils {
     
     private static boolean matchesExpression(JsonNode propValue, String operator, String value) {
         if (propValue.isNumber()) {
-            double numValue = propValue.asDouble();
-            double compareValue = Double.parseDouble(value);
-            return switch (operator) {
-                case "=" -> numValue == compareValue;
-                case "!=" -> numValue != compareValue;
-                case ">" -> numValue > compareValue;
-                case "<" -> numValue < compareValue;
-                case ">=" -> numValue >= compareValue;
-                case "<=" -> numValue <= compareValue;
-                default -> false;
-            };
+            try {
+                double numValue = propValue.asDouble();
+                double compareValue = Double.parseDouble(value);
+                return switch (operator) {
+                    case "=" -> numValue == compareValue;
+                    case "!=" -> numValue != compareValue;
+                    case ">" -> numValue > compareValue;
+                    case "<" -> numValue < compareValue;
+                    case ">=" -> numValue >= compareValue;
+                    case "<=" -> numValue <= compareValue;
+                    default -> false;
+                };
+            } catch (NumberFormatException e) {
+                logger.warn("Invalid numeric value in filter expression: {}", value);
+                return false;
+            }
         } else if (propValue.isTextual()) {
             String textValue = propValue.asText();
             return switch (operator) {

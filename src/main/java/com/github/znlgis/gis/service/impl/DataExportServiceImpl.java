@@ -123,9 +123,9 @@ public class DataExportServiceImpl implements DataExportService {
     }
     
     private String convertToWkt(String geoJson) {
-        // Simplified WKT conversion
-        // Full implementation would parse GeoJSON and convert geometries
-        return "GEOMETRYCOLLECTION EMPTY";
+        // WKT conversion would require proper GeoJSON to WKT transformation
+        // This is a placeholder - full implementation would use JTS WKTWriter
+        throw new UnsupportedOperationException("WKT export not yet implemented");
     }
     
     private String generateSimpleSvg(String geoJson, int width, int height, String style) {

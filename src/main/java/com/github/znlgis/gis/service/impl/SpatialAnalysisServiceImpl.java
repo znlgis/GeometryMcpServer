@@ -266,15 +266,25 @@ public class SpatialAnalysisServiceImpl implements SpatialAnalysisService {
         return dataManagementService.createDerivedData(sessionId, resultGeoJson, dataId);
     }
     
+    // Distance conversion constants (approximate values at the equator)
+    // Note: These are approximations and vary by latitude. For precise conversions,
+    // use proper geodetic calculations based on the actual location.
+    private static final double METERS_PER_DEGREE = 111320.0;      // 1 degree ≈ 111.32 km at equator
+    private static final double KILOMETERS_PER_DEGREE = 111.32;    // 1 degree ≈ 111.32 km at equator
+    private static final double MILES_PER_DEGREE = 69.0;           // 1 degree ≈ 69 miles at equator
+    private static final double FEET_PER_DEGREE = 364320.0;        // 1 degree ≈ 364,320 feet at equator
+    
     /**
      * Converts distance to degrees (approximate conversion for geographic coordinates).
+     * Note: This is an approximation that assumes equatorial distances.
+     * For more accurate results at different latitudes, use proper geodetic calculations.
      */
     private double convertToDegreesIfNeeded(double distance, String units) {
         return switch (units.toLowerCase()) {
-            case "meters", "m" -> distance / 111320.0; // Approximate meters per degree at equator
-            case "kilometers", "km" -> distance / 111.32;
-            case "miles", "mi" -> distance / 69.0;
-            case "feet", "ft" -> distance / 364320.0;
+            case "meters", "m" -> distance / METERS_PER_DEGREE;
+            case "kilometers", "km" -> distance / KILOMETERS_PER_DEGREE;
+            case "miles", "mi" -> distance / MILES_PER_DEGREE;
+            case "feet", "ft" -> distance / FEET_PER_DEGREE;
             case "degrees", "deg" -> distance;
             default -> distance; // Assume degrees
         };

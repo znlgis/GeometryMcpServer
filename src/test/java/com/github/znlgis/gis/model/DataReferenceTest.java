@@ -39,7 +39,11 @@ class DataReferenceTest {
         java.time.Instant originalExpiry = ref.getExpiresAt();
         
         // Wait a moment
-        try { Thread.sleep(10); } catch (InterruptedException e) {}
+        try { 
+            Thread.sleep(10); 
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
         
         ref.touch();
         

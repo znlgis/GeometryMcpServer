@@ -1,6 +1,7 @@
 package com.github.znlgis.gis.service.impl;
 
 import com.github.znlgis.gis.model.DataReference;
+import com.github.znlgis.gis.model.SessionQuota;
 import com.github.znlgis.gis.model.enums.DataState;
 import com.github.znlgis.gis.model.enums.DataType;
 import com.github.znlgis.gis.repository.DataReferenceRepository;
@@ -73,8 +74,12 @@ public class DataManagementServiceImpl implements DataManagementService {
             long size = data.length;
             
             // Check quota
-            if (!sessionService.getQuota(sessionId).canAddData(size)) {
-                throw new IllegalStateException("Session quota exceeded");
+            SessionQuota quota = sessionService.getQuota(sessionId);
+            if (!quota.canAddData(size)) {
+                throw new IllegalStateException(String.format(
+                    "Session quota exceeded: size %d bytes would exceed limit of %d bytes (current: %d bytes)",
+                    size, quota.maxDataSize(), quota.currentDataSize()
+                ));
             }
             
             // Generate storage location
