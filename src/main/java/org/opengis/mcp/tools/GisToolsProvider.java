@@ -249,7 +249,7 @@ public class GisToolsProvider {
         
         // Projection & Transform Tools
         defs.add(createToolDef("transform_crs",
-            "Transform geometry from one CRS to another. Returns new geometry ID.",
+            "Update CRS metadata for a geometry. Note: This updates metadata only; actual coordinate transformation requires additional libraries. Returns new geometry ID.",
             Map.of(
                 "geometry_id", Map.of("type", "string", "description", "ID of the source geometry"),
                 "target_crs", Map.of("type", "string", "description", "Target CRS (e.g., EPSG:3857)")

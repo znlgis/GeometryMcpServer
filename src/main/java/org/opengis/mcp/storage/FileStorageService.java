@@ -127,10 +127,14 @@ public class FileStorageService {
 
     /**
      * Cleans up expired files.
+     * Note: File-based expiration is not currently tracked. 
+     * Memory-based objects are managed by SessionManager with TTL.
+     * @throws UnsupportedOperationException as file expiration is not implemented
      */
     public int cleanupExpired() {
-        // TODO: Implement cleanup based on metadata expiration
-        return 0;
+        // File storage doesn't track expiration - memory objects are managed by SessionManager
+        throw new UnsupportedOperationException(
+            "File expiration cleanup not implemented. Use SessionManager for TTL-based cleanup.");
     }
 
     private Path getFilePath(String id) {

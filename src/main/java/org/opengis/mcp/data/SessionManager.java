@@ -271,11 +271,12 @@ public class SessionManager {
     }
 
     /**
-     * Scheduled task to clean up expired objects.
+     * Scheduled task to clean up expired objects and validate memory limits.
      */
     @Scheduled(fixedRate = 60000) // Every minute
     public void cleanupExpired() {
         clearExpired();
+        validateMemoryLimit();
     }
 
     private String resolveId(String idOrAlias) {
@@ -286,17 +287,30 @@ public class SessionManager {
         aliasToId.entrySet().removeIf(entry -> entry.getValue().equals(id));
     }
 
+    /**
+     * Validates that cache size limit is not exceeded.
+     * Called on store operations for lightweight validation.
+     */
     private void validateStorageLimit() {
         if (dataCache.estimatedSize() >= properties.getCache().getMaxSize()) {
             log.warn("Cache size limit reached, oldest entries will be evicted");
         }
-        
+    }
+
+    /**
+     * Validates memory limit periodically (called by scheduled task).
+     * Separated from per-operation validation for performance.
+     */
+    private void validateMemoryLimit() {
         long totalMemory = dataCache.asMap().values().stream()
             .mapToLong(GisDataObject::estimateMemorySize)
             .sum();
         
         if (totalMemory > properties.getData().getMaxMemoryUsage()) {
-            throw new IllegalStateException("Memory limit exceeded: " + totalMemory + " bytes");
+            log.error("Memory limit exceeded: {} bytes (limit: {} bytes). Consider clearing cache.",
+                totalMemory, properties.getData().getMaxMemoryUsage());
+            // Trigger cache cleanup instead of throwing exception
+            dataCache.cleanUp();
         }
     }
 }
