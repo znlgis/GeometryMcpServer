@@ -3,6 +3,36 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
+# Java/Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+dependency-reduced-pom.xml
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Application data directories
+data/
+exports/
+*.db
+*.db.mv.db
+*.db.trace.db
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+.factorypath
+
 # User-specific files
 *.rsuser
 *.suo
