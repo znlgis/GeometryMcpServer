@@ -1,0 +1,3 @@
+[submodule "opengis-utils-for-java"]
+	path = opengis-utils-for-java
+	url = https://github.com/znlgis/opengis-utils-for-java

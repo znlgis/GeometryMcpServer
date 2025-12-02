@@ -5,9 +5,8 @@ import com.github.znlgis.gis.model.enums.SpatialPredicate;
 import com.github.znlgis.gis.service.DataManagementService;
 import com.github.znlgis.gis.service.SpatialAnalysisService;
 import com.github.znlgis.gis.util.GeoJsonUtils;
+import com.znlgis.ogu4j.geometry.GeometryUtil;
 import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.io.ParseException;
-import org.locationtech.jts.io.WKTReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -15,21 +14,20 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * 空间分析服务实现类。
  * <p>
- * 基于 JTS (Java Topology Suite) 实现各种空间分析操作。
+ * 基于 opengis-utils-for-java 和 JTS (Java Topology Suite) 实现各种空间分析操作。
  * 所有操作采用引用传递模式，即输入和输出都是数据 ID，
  * 实际数据通过 DataManagementService 进行读取和存储。
  * <p>
- * Implementation of SpatialAnalysisService using JTS.
+ * Implementation of SpatialAnalysisService using opengis-utils-for-java and JTS.
  * All operations use reference passing pattern for optimal performance
  * with large datasets.
  *
  * @see SpatialAnalysisService
- * @see org.locationtech.jts.geom.Geometry
+ * @see com.znlgis.ogu4j.geometry.GeometryUtil
  */
 @Service
 @Transactional
@@ -39,9 +37,6 @@ public class SpatialAnalysisServiceImpl implements SpatialAnalysisService {
     
     private final DataManagementService dataManagementService;
     
-    /** WKT 解析器 / WKT parser */
-    private final WKTReader wktReader = new WKTReader();
-    
     public SpatialAnalysisServiceImpl(DataManagementService dataManagementService) {
         this.dataManagementService = dataManagementService;
     }
@@ -49,7 +44,7 @@ public class SpatialAnalysisServiceImpl implements SpatialAnalysisService {
     /**
      * {@inheritDoc}
      * <p>
-     * 实现说明：使用 JTS buffer() 方法创建缓冲区。
+     * 实现说明：使用 GeometryUtil.buffer() 方法创建缓冲区。
      * 距离单位会自动转换为度（适用于 WGS84 坐标系）。
      */
     @Override
@@ -67,7 +62,7 @@ public class SpatialAnalysisServiceImpl implements SpatialAnalysisService {
         List<Geometry> bufferedGeometries = new ArrayList<>();
         
         for (Geometry geom : sourceGeometries) {
-            Geometry buffered = geom.buffer(distanceInDegrees);
+            Geometry buffered = GeometryUtil.buffer(geom, distanceInDegrees);
             bufferedGeometries.add(buffered);
         }
         
@@ -97,9 +92,9 @@ public class SpatialAnalysisServiceImpl implements SpatialAnalysisService {
         // 计算所有几何对的交集 / Compute intersection for all geometry pairs
         for (Geometry geomA : geometriesA) {
             for (Geometry geomB : geometriesB) {
-                if (geomA.intersects(geomB)) {
-                    Geometry intersection = geomA.intersection(geomB);
-                    if (!intersection.isEmpty()) {
+                if (GeometryUtil.intersects(geomA, geomB)) {
+                    Geometry intersection = GeometryUtil.intersection(geomA, geomB);
+                    if (!GeometryUtil.isEmpty(intersection)) {
                         intersections.add(intersection);
                     }
                 }
@@ -133,12 +128,9 @@ public class SpatialAnalysisServiceImpl implements SpatialAnalysisService {
                 GeoJsonUtils.emptyFeatureCollection(), dataIds.length > 0 ? dataIds[0] : null);
         }
         
-        // 执行级联并集 / Perform cascaded union
-        Geometry unionResult = allGeometries.get(0);
-        for (int i = 1; i < allGeometries.size(); i++) {
-            unionResult = unionResult.union(allGeometries.get(i));
-        }
-        
+        // 执行级联并集 / Perform cascaded union using GeometryUtil
+        Geometry unionResult = GeometryUtil.union(allGeometries.toArray(new Geometry[0]));
+
         String resultGeoJson = GeoJsonUtils.toFeatureCollection(List.of(unionResult));
         
         return dataManagementService.createDerivedData(sessionId, resultGeoJson, 
@@ -154,11 +146,11 @@ public class SpatialAnalysisServiceImpl implements SpatialAnalysisService {
     public DataReference spatialQuery(String sessionId, String dataId, String wkt, SpatialPredicate predicate) {
         logger.info("Performing spatial query: dataId={}, predicate={}", dataId, predicate);
         
-        // 解析查询几何 / Parse query geometry
+        // 解析查询几何 / Parse query geometry using GeometryUtil
         Geometry queryGeometry;
         try {
-            queryGeometry = wktReader.read(wkt);
-        } catch (ParseException e) {
+            queryGeometry = GeometryUtil.wkt2Geometry(wkt);
+        } catch (Exception e) {
             throw new IllegalArgumentException("Invalid WKT: " + wkt, e);
         }
         
@@ -167,17 +159,17 @@ public class SpatialAnalysisServiceImpl implements SpatialAnalysisService {
         
         List<Geometry> matchedGeometries = new ArrayList<>();
         
-        // 根据空间谓词筛选 / Filter by spatial predicate
+        // 根据空间谓词筛选 / Filter by spatial predicate using GeometryUtil
         for (Geometry geom : geometries) {
             boolean matches = switch (predicate) {
-                case INTERSECTS -> geom.intersects(queryGeometry);
-                case WITHIN -> geom.within(queryGeometry);
-                case CONTAINS -> geom.contains(queryGeometry);
-                case CROSSES -> geom.crosses(queryGeometry);
-                case TOUCHES -> geom.touches(queryGeometry);
-                case OVERLAPS -> geom.overlaps(queryGeometry);
-                case DISJOINT -> geom.disjoint(queryGeometry);
-                case EQUALS -> geom.equals(queryGeometry);
+                case INTERSECTS -> GeometryUtil.intersects(geom, queryGeometry);
+                case WITHIN -> GeometryUtil.within(geom, queryGeometry);
+                case CONTAINS -> GeometryUtil.contains(geom, queryGeometry);
+                case CROSSES -> GeometryUtil.crosses(geom, queryGeometry);
+                case TOUCHES -> GeometryUtil.touches(geom, queryGeometry);
+                case OVERLAPS -> GeometryUtil.overlaps(geom, queryGeometry);
+                case DISJOINT -> GeometryUtil.disjoint(geom, queryGeometry);
+                case EQUALS -> geom.equals(queryGeometry); // Use JTS native equals
             };
             
             if (matches) {
