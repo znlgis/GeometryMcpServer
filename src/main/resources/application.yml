@@ -1,0 +1,43 @@
+# GIS MCP Server Configuration
+gis:
+  mcp:
+    server:
+      name: gis-mcp-server
+      version: 1.0.0
+      description: GIS MCP Server for AI-powered spatial analysis
+
+  data:
+    # Maximum size for a single data object (in bytes)
+    max-object-size: 104857600  # 100MB
+    # Maximum number of data objects per session
+    max-objects-per-session: 50
+    # Default TTL for data objects (in seconds)
+    default-ttl: 3600
+    # Maximum memory usage (in bytes)
+    max-memory-usage: 2147483648  # 2GB
+
+  storage:
+    # Base directory for file storage
+    base-directory: ${java.io.tmpdir}/gis-mcp-server
+    # Allowed file paths (comma-separated)
+    allowed-paths:
+      - ${java.io.tmpdir}
+      - ${user.home}/gis-data
+
+  cache:
+    # Maximum cache size
+    max-size: 1000
+    # Cache TTL (in seconds)
+    ttl: 3600
+
+  security:
+    # Operation timeout (in seconds)
+    operation-timeout: 60
+    # Enable audit logging
+    enable-audit: true
+
+# Logging configuration
+logging:
+  level:
+    org.opengis.mcp: DEBUG
+    org.geotools: WARN
