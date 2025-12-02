@@ -16,21 +16,52 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
+ * GeoJSON 解析和操作工具类。
+ * <p>
+ * 提供 GeoJSON 与 JTS 几何对象之间的双向转换，以及 GeoJSON 数据处理功能：
+ * <ul>
+ *   <li>解析：将 GeoJSON 字符串解析为 JTS Geometry 对象</li>
+ *   <li>序列化：将 JTS Geometry 对象转换为 GeoJSON 字符串</li>
+ *   <li>元数据提取：提取边界范围、要素数量、坐标系等信息</li>
+ *   <li>数据处理：截断要素、属性筛选、生成摘要</li>
+ * </ul>
+ * <p>
+ * 支持的 GeoJSON 类型：Point, MultiPoint, LineString, MultiLineString,
+ * Polygon, MultiPolygon, GeometryCollection, Feature, FeatureCollection
+ * <p>
  * Utility class for GeoJSON parsing and manipulation.
+ * Provides bidirectional conversion between GeoJSON and JTS Geometry objects,
+ * metadata extraction, and data processing functions.
+ *
+ * @see org.locationtech.jts.geom.Geometry JTS Geometry
  */
 public final class GeoJsonUtils {
     
     private static final Logger logger = LoggerFactory.getLogger(GeoJsonUtils.class);
+    
+    /** Jackson ObjectMapper 实例 / Jackson ObjectMapper instance */
     private static final ObjectMapper objectMapper = new ObjectMapper();
+    
+    /** JTS GeometryFactory，默认使用 WGS84 (EPSG:4326) / JTS GeometryFactory with WGS84 SRID */
     private static final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
+    
+    /** WKT 写入器 / WKT writer */
     private static final WKTWriter wktWriter = new WKTWriter();
     
     private GeoJsonUtils() {
-        // Utility class
+        // 工具类禁止实例化 / Utility class, prevent instantiation
     }
     
     /**
-     * Parses geometries from GeoJSON string.
+     * 从 GeoJSON 字符串解析几何对象列表。
+     * <p>
+     * 支持 FeatureCollection、Feature 和直接的几何对象。
+     * <p>
+     * Parses geometries from a GeoJSON string.
+     * Supports FeatureCollection, Feature, and direct geometry objects.
+     *
+     * @param geoJson GeoJSON 字符串 / GeoJSON string
+     * @return 几何对象列表 / List of geometry objects
      */
     public static List<Geometry> parseGeometries(String geoJson) {
         List<Geometry> geometries = new ArrayList<>();
@@ -75,7 +106,16 @@ public final class GeoJsonUtils {
     }
     
     /**
+     * 从 JSON 节点解析单个几何对象。
+     * <p>
+     * 支持所有 GeoJSON 几何类型：Point, MultiPoint, LineString,
+     * MultiLineString, Polygon, MultiPolygon, GeometryCollection。
+     * <p>
      * Parses a single geometry from a JSON node.
+     * Supports all GeoJSON geometry types.
+     *
+     * @param geometryNode 几何 JSON 节点 / Geometry JSON node
+     * @return JTS Geometry 对象，如果解析失败则返回 null / JTS Geometry or null if parsing fails
      */
     public static Geometry parseGeometry(JsonNode geometryNode) {
         if (geometryNode == null || geometryNode.isNull()) {
@@ -216,14 +256,25 @@ public final class GeoJsonUtils {
     }
     
     /**
+     * 将几何对象列表转换为 GeoJSON FeatureCollection。
+     * <p>
      * Converts a list of geometries to a GeoJSON FeatureCollection.
+     *
+     * @param geometries 几何对象列表 / List of geometries
+     * @return GeoJSON FeatureCollection 字符串 / GeoJSON FeatureCollection string
      */
     public static String toFeatureCollection(List<Geometry> geometries) {
         return toFeatureCollectionWithCrs(geometries, null);
     }
     
     /**
-     * Converts a list of geometries to a GeoJSON FeatureCollection with CRS.
+     * 将几何对象列表转换为带有 CRS 信息的 GeoJSON FeatureCollection。
+     * <p>
+     * Converts a list of geometries to a GeoJSON FeatureCollection with CRS info.
+     *
+     * @param geometries 几何对象列表 / List of geometries
+     * @param crs 坐标参考系标识符（如 "EPSG:4326"）/ CRS identifier (e.g., "EPSG:4326")
+     * @return GeoJSON FeatureCollection 字符串 / GeoJSON FeatureCollection string
      */
     public static String toFeatureCollectionWithCrs(List<Geometry> geometries, String crs) {
         ObjectNode root = objectMapper.createObjectNode();
@@ -261,7 +312,12 @@ public final class GeoJsonUtils {
     }
     
     /**
-     * Converts a JTS Geometry to a GeoJSON geometry object.
+     * 将 JTS Geometry 对象转换为 GeoJSON 几何对象节点。
+     * <p>
+     * Converts a JTS Geometry to a GeoJSON geometry object node.
+     *
+     * @param geometry JTS 几何对象 / JTS Geometry object
+     * @return GeoJSON 几何对象节点 / GeoJSON geometry object node
      */
     public static ObjectNode geometryToJson(Geometry geometry) {
         ObjectNode geomNode = objectMapper.createObjectNode();
@@ -352,14 +408,26 @@ public final class GeoJsonUtils {
     }
     
     /**
-     * Returns an empty FeatureCollection.
+     * 返回空的 FeatureCollection JSON 字符串。
+     * <p>
+     * Returns an empty FeatureCollection JSON string.
+     *
+     * @return 空 FeatureCollection 字符串 / Empty FeatureCollection string
      */
     public static String emptyFeatureCollection() {
         return "{\"type\":\"FeatureCollection\",\"features\":[]}";
     }
     
     /**
-     * Extracts bounds from GeoJSON.
+     * 从 GeoJSON 中提取边界范围。
+     * <p>
+     * 计算所有几何对象的外包矩形 (MBR)。
+     * <p>
+     * Extracts bounding box from GeoJSON.
+     * Calculates the minimum bounding rectangle (MBR) of all geometries.
+     *
+     * @param geoJson GeoJSON 字符串 / GeoJSON string
+     * @return 边界数组 [minX, minY, maxX, maxY] / Bounds array [minX, minY, maxX, maxY]
      */
     public static double[] extractBounds(String geoJson) {
         List<Geometry> geometries = parseGeometries(geoJson);
@@ -376,7 +444,12 @@ public final class GeoJsonUtils {
     }
     
     /**
+     * 统计 GeoJSON 中的要素数量。
+     * <p>
      * Counts features in GeoJSON.
+     *
+     * @param geoJson GeoJSON 字符串 / GeoJSON string
+     * @return 要素数量 / Feature count
      */
     public static long countFeatures(String geoJson) {
         try {
@@ -396,7 +469,12 @@ public final class GeoJsonUtils {
     }
     
     /**
-     * Extracts CRS from GeoJSON.
+     * 从 GeoJSON 中提取坐标参考系 (CRS)。
+     * <p>
+     * Extracts Coordinate Reference System (CRS) from GeoJSON.
+     *
+     * @param geoJson GeoJSON 字符串 / GeoJSON string
+     * @return CRS 标识符，如果未找到则返回 null / CRS identifier or null if not found
      */
     public static String extractCrs(String geoJson) {
         try {
@@ -409,13 +487,23 @@ public final class GeoJsonUtils {
                 }
             }
         } catch (JsonProcessingException e) {
-            // Ignore
+            // 解析失败，返回 null / Parse failed, return null
         }
         return null;
     }
     
     /**
-     * Truncates features to a maximum count.
+     * 截断要素到指定的最大数量。
+     * <p>
+     * 用于生成预览数据，避免返回过多要素。
+     * 截断后的结果会添加 truncated 和 total_count 属性。
+     * <p>
+     * Truncates features to a maximum count for preview purposes.
+     * Adds truncated and total_count properties to the result.
+     *
+     * @param geoJson GeoJSON 字符串 / GeoJSON string
+     * @param maxFeatures 最大要素数量 / Maximum number of features
+     * @return 截断后的 GeoJSON / Truncated GeoJSON
      */
     public static String truncateFeatures(String geoJson, int maxFeatures) {
         try {
@@ -449,7 +537,16 @@ public final class GeoJsonUtils {
     }
     
     /**
-     * Generates a summary of GeoJSON data.
+     * 生成 GeoJSON 数据的摘要信息。
+     * <p>
+     * 包含数据 ID、类型、格式、要素数量、大小、CRS 和边界范围。
+     * <p>
+     * Generates a summary of GeoJSON data including ID, type, format,
+     * feature count, size, CRS, and bounds.
+     *
+     * @param geoJson GeoJSON 字符串 / GeoJSON string
+     * @param ref 数据引用 / Data reference
+     * @return JSON 摘要字符串 / JSON summary string
      */
     public static String generateSummary(String geoJson, DataReference ref) {
         ObjectNode summary = objectMapper.createObjectNode();
@@ -479,8 +576,21 @@ public final class GeoJsonUtils {
     }
     
     /**
+     * 根据表达式筛选要素。
+     * <p>
+     * 支持简单的比较表达式，如：
+     * <ul>
+     *   <li>property = 'value' (字符串相等)</li>
+     *   <li>property > 10 (数值比较)</li>
+     *   <li>property LIKE '%text%' (模糊匹配)</li>
+     * </ul>
+     * <p>
      * Filters features by a simple expression.
-     * This is a simplified implementation supporting basic comparisons.
+     * Supports basic comparisons: =, !=, >, <, >=, <=, LIKE
+     *
+     * @param geoJson GeoJSON 字符串 / GeoJSON string
+     * @param expression 筛选表达式 / Filter expression
+     * @return 筛选后的 GeoJSON / Filtered GeoJSON
      */
     public static String filterByExpression(String geoJson, String expression) {
         try {

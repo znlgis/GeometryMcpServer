@@ -4,7 +4,26 @@ import com.github.znlgis.gis.model.DataReference;
 import com.github.znlgis.gis.model.enums.SpatialPredicate;
 
 /**
- * Service for spatial analysis operations.
+ * 空间分析服务接口。
+ * <p>
+ * 提供完整的空间分析功能，包括：
+ * <ul>
+ *   <li>缓冲区分析：围绕要素创建指定距离的缓冲区</li>
+ *   <li>空间叠加：交集、并集、差集、对称差集运算</li>
+ *   <li>空间查询：基于空间谓词筛选要素</li>
+ *   <li>几何运算：凸包、质心计算</li>
+ *   <li>属性筛选：基于属性表达式过滤要素</li>
+ * </ul>
+ * <p>
+ * 所有方法采用引用传递模式，返回新创建的数据引用而非实际数据，
+ * 以优化大数据量场景下的性能。
+ * <p>
+ * Spatial analysis service interface providing buffer, overlay operations,
+ * spatial queries, and geometric computations. All methods use reference
+ * passing pattern, returning data references instead of actual data.
+ *
+ * @see DataReference 数据引用实体
+ * @see SpatialPredicate 空间谓词枚举
  */
 public interface SpatialAnalysisService {
     

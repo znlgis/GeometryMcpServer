@@ -9,7 +9,19 @@ import java.util.List;
 import java.util.Map;
 
 /**
+ * 缓冲区分析工具。
+ * <p>
+ * 在源数据的要素周围创建指定距离的缓冲区。
+ * 支持多种距离单位：米、千米、英里、英尺、度。
+ * 返回包含缓冲区几何对象的新数据引用。
+ * <p>
  * Tool for buffer analysis.
+ * Creates a buffer zone around features in the source data.
+ * Supports multiple distance units: meters, kilometers, miles, feet, degrees.
+ * Returns a new data reference containing buffered geometries.
+ *
+ * @see McpTool MCP 工具接口
+ * @see SpatialAnalysisService 空间分析服务
  */
 @Component
 public class SpatialBufferTool implements McpTool {
@@ -66,8 +78,10 @@ public class SpatialBufferTool implements McpTool {
             double distance = ((Number) parameters.get("distance")).doubleValue();
             String units = (String) parameters.getOrDefault("units", "meters");
             
+            // 执行缓冲区分析 / Perform buffer analysis
             DataReference result = spatialAnalysisService.buffer(sessionId, sourceDataId, distance, units);
             
+            // 构建返回结果 / Build result
             Map<String, Object> response = new HashMap<>();
             response.put("result_data_id", result.getId());
             response.put("feature_count", result.getFeatureCount());

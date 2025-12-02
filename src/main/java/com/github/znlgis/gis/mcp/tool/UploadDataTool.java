@@ -12,7 +12,17 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Tool for uploading GIS data.
+ * 数据上传工具。
+ * <p>
+ * 用于将 GIS 数据（GeoJSON、Shapefile 等）上传到服务器。
+ * 支持直接上传 GeoJSON 内容或从 URL 获取数据。
+ * 上传成功后返回 data_id 供后续操作使用。
+ * <p>
+ * Tool for uploading GIS data (GeoJSON, Shapefile, etc.) to the server.
+ * Supports direct GeoJSON content or fetching from URL.
+ * Returns a data_id for subsequent operations.
+ *
+ * @see McpTool MCP 工具接口
  */
 @Component
 public class UploadDataTool implements McpTool {
@@ -72,11 +82,11 @@ public class UploadDataTool implements McpTool {
             
             DataReference ref;
             
-            // Check if data is a URL
+            // 检查数据是否为 URL / Check if data is a URL
             if (data.startsWith("http://") || data.startsWith("https://")) {
                 ref = dataManagementService.uploadDataFromUrl(sessionId, data, format, type);
             } else {
-                // Assume it's direct GeoJSON data
+                // 假设是直接的 GeoJSON 数据 / Assume it's direct GeoJSON data
                 ref = dataManagementService.uploadData(
                     sessionId,
                     new ByteArrayInputStream(data.getBytes(StandardCharsets.UTF_8)),
@@ -86,6 +96,7 @@ public class UploadDataTool implements McpTool {
                 );
             }
             
+            // 构建返回结果 / Build result
             Map<String, Object> result = new HashMap<>();
             result.put("data_id", ref.getId());
             result.put("type", ref.getType().toString());

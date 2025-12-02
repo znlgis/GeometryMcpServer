@@ -17,13 +17,33 @@ import java.util.List;
 import java.util.Map;
 
 /**
+ * MCP 协议处理器，负责处理 JSON-RPC 消息。
+ * <p>
+ * 该处理器实现 MCP 规范定义的核心协议方法：
+ * <ul>
+ *   <li>initialize: 初始化会话并返回服务器能力</li>
+ *   <li>tools/list: 列出所有可用工具</li>
+ *   <li>tools/call: 调用指定工具</li>
+ *   <li>ping: 连接健康检查</li>
+ * </ul>
+ * <p>
+ * 所有消息都遵循 JSON-RPC 2.0 规范。
+ * <p>
  * MCP Protocol handler for processing JSON-RPC messages.
+ * Implements core MCP protocol methods (initialize, tools/list, tools/call, ping)
+ * following the JSON-RPC 2.0 specification.
+ *
+ * @see <a href="https://spec.modelcontextprotocol.io">MCP Specification</a>
  */
 @Component
 public class McpProtocolHandler {
     
     private static final Logger logger = LoggerFactory.getLogger(McpProtocolHandler.class);
+    
+    /** JSON-RPC 协议版本 / JSON-RPC protocol version */
     private static final String JSONRPC_VERSION = "2.0";
+    
+    /** MCP 协议版本 / MCP protocol version */
     private static final String MCP_VERSION = "2024-11-05";
     
     private final ObjectMapper objectMapper;
@@ -31,6 +51,15 @@ public class McpProtocolHandler {
     private final RequestRouter requestRouter;
     private final SessionService sessionService;
     
+    /**
+     * 构造函数。
+     * <p>
+     * Constructor.
+     *
+     * @param toolRegistry 工具注册表 / Tool registry
+     * @param requestRouter 请求路由器 / Request router
+     * @param sessionService 会话服务 / Session service
+     */
     public McpProtocolHandler(
             ToolRegistry toolRegistry,
             RequestRouter requestRouter,
@@ -43,7 +72,16 @@ public class McpProtocolHandler {
     }
     
     /**
-     * Handles an MCP request message.
+     * 处理 MCP 请求消息。
+     * <p>
+     * 解析 JSON-RPC 请求，根据方法名分发到相应的处理函数，
+     * 并返回 JSON-RPC 响应。
+     * <p>
+     * Handles an MCP request message. Parses the JSON-RPC request,
+     * dispatches to appropriate handler, and returns JSON-RPC response.
+     *
+     * @param requestJson JSON-RPC 请求字符串 / JSON-RPC request string
+     * @return JSON-RPC 响应字符串 / JSON-RPC response string
      */
     @SuppressWarnings("unchecked")
     public String handleRequest(String requestJson) {
@@ -54,6 +92,7 @@ public class McpProtocolHandler {
             Object id = request.get("id");
             Map<String, Object> params = (Map<String, Object>) request.getOrDefault("params", Map.of());
             
+            // 根据方法名分发处理 / Dispatch based on method name
             Object result = switch (method) {
                 case "initialize" -> handleInitialize(params);
                 case "tools/list" -> handleToolsList();
@@ -78,10 +117,18 @@ public class McpProtocolHandler {
     }
     
     /**
+     * 处理 initialize 方法。
+     * <p>
+     * 创建新会话并返回服务器信息和能力声明。
+     * <p>
      * Handles the initialize method.
+     * Creates a new session and returns server info and capabilities.
+     *
+     * @param params 请求参数 / Request parameters
+     * @return 初始化结果 / Initialization result
      */
     private Map<String, Object> handleInitialize(Map<String, Object> params) {
-        // Create a new session
+        // 创建新会话 / Create a new session
         String userId = (String) params.get("userId");
         Session session = sessionService.createSession(userId);
         
@@ -89,10 +136,12 @@ public class McpProtocolHandler {
         result.put("protocolVersion", MCP_VERSION);
         result.put("sessionId", session.getSessionId());
         
+        // 服务器能力声明 / Server capabilities
         Map<String, Object> capabilities = new HashMap<>();
         capabilities.put("tools", Map.of("listChanged", false));
         result.put("capabilities", capabilities);
         
+        // 服务器信息 / Server info
         Map<String, Object> serverInfo = new HashMap<>();
         serverInfo.put("name", "geometry-mcp-server");
         serverInfo.put("version", "1.0.0");
@@ -102,7 +151,14 @@ public class McpProtocolHandler {
     }
     
     /**
+     * 处理 tools/list 方法。
+     * <p>
+     * 返回所有可用工具的目录。
+     * <p>
      * Handles the tools/list method.
+     * Returns catalog of all available tools.
+     *
+     * @return 工具列表结果 / Tool list result
      */
     private Map<String, Object> handleToolsList() {
         Map<String, Object> result = new HashMap<>();
@@ -111,7 +167,15 @@ public class McpProtocolHandler {
     }
     
     /**
+     * 处理 tools/call 方法。
+     * <p>
+     * 验证参数后调用指定工具并返回结果。
+     * <p>
      * Handles the tools/call method.
+     * Validates parameters and invokes the specified tool.
+     *
+     * @param params 请求参数 / Request parameters
+     * @return 工具调用结果 / Tool call result
      */
     @SuppressWarnings("unchecked")
     private Map<String, Object> handleToolsCall(Map<String, Object> params) {
@@ -119,6 +183,7 @@ public class McpProtocolHandler {
         String name = (String) params.get("name");
         Map<String, Object> arguments = (Map<String, Object>) params.getOrDefault("arguments", Map.of());
         
+        // 验证必需参数 / Validate required parameters
         if (sessionId == null) {
             return createError(-32602, "Missing sessionId");
         }
@@ -126,8 +191,10 @@ public class McpProtocolHandler {
             return createError(-32602, "Missing tool name");
         }
         
+        // 路由并执行工具 / Route and execute tool
         McpTool.ToolResult toolResult = requestRouter.route(sessionId, name, arguments);
         
+        // 构建 MCP 格式的响应 / Build MCP-format response
         Map<String, Object> result = new HashMap<>();
         
         if (toolResult.success()) {
@@ -147,18 +214,33 @@ public class McpProtocolHandler {
     }
     
     /**
+     * 处理 ping 方法。
+     * <p>
+     * 返回空对象表示连接正常。
+     * <p>
      * Handles the ping method.
+     * Returns empty object indicating connection is alive.
+     *
+     * @return 空结果 / Empty result
      */
     private Map<String, Object> handlePing() {
         return Map.of();
     }
     
+    /**
+     * 创建 JSON-RPC 错误对象。
+     * Creates a JSON-RPC error object.
+     */
     private Map<String, Object> createError(int code, String message) {
         Map<String, Object> error = new HashMap<>();
         error.put("error", Map.of("code", code, "message", message));
         return error;
     }
     
+    /**
+     * 创建成功的 JSON-RPC 响应。
+     * Creates a successful JSON-RPC response.
+     */
     private String createSuccessResponse(Object id, Object result) {
         Map<String, Object> response = new HashMap<>();
         response.put("jsonrpc", JSONRPC_VERSION);
@@ -172,6 +254,10 @@ public class McpProtocolHandler {
         }
     }
     
+    /**
+     * 创建错误的 JSON-RPC 响应。
+     * Creates an error JSON-RPC response.
+     */
     private String createErrorResponse(Object id, Map<String, Object> error) {
         Map<String, Object> response = new HashMap<>();
         response.put("jsonrpc", JSONRPC_VERSION);
@@ -185,6 +271,10 @@ public class McpProtocolHandler {
         }
     }
     
+    /**
+     * 序列化工具结果为字符串。
+     * Serializes tool result to string.
+     */
     private String serializeResult(Object result) {
         if (result instanceof String) {
             return (String) result;

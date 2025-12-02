@@ -8,7 +8,25 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Session model for managing user sessions and data isolation.
+ * 会话实体，用于管理用户会话和数据隔离。
+ * <p>
+ * 每个会话包含：
+ * <ul>
+ *   <li>唯一会话标识符和可选的用户关联</li>
+ *   <li>该会话创建的所有数据引用集合</li>
+ *   <li>存储配额管理（大小限制和数量限制）</li>
+ *   <li>活动时间跟踪和状态管理</li>
+ * </ul>
+ * <p>
+ * 会话提供数据隔离，确保不同会话的数据相互不可见（除非显式共享）。
+ * <p>
+ * Session entity for managing user sessions and data isolation.
+ * Each session maintains its own data references, quota limits, and activity tracking.
+ * Sessions provide data isolation, ensuring data from different sessions is not visible
+ * to each other unless explicitly shared.
+ *
+ * @see SessionState 会话状态枚举
+ * @see SessionQuota 会话配额记录
  */
 @Entity
 @Table(name = "sessions")
@@ -140,14 +158,26 @@ public class Session {
     }
     
     /**
-     * Updates activity timestamp.
+     * 更新会话活动时间戳。
+     * <p>
+     * 每次会话操作时调用，用于跟踪会话活跃度和实现会话超时。
+     * <p>
+     * Updates the activity timestamp. Called on each session operation
+     * to track activity and implement session timeout.
      */
     public void touch() {
         this.lastActivityAt = Instant.now();
     }
     
     /**
-     * Adds a data reference to this session.
+     * 向会话添加数据引用。
+     * <p>
+     * 同时更新配额使用量（数据计数和大小）。
+     * <p>
+     * Adds a data reference to this session and updates quota usage.
+     *
+     * @param dataRefId 数据引用 ID / Data reference ID
+     * @param dataSize 数据大小（字节）/ Data size in bytes
      */
     public void addDataRef(String dataRefId, long dataSize) {
         this.dataRefs.add(dataRefId);
@@ -157,7 +187,15 @@ public class Session {
     }
     
     /**
-     * Removes a data reference from this session.
+     * 从会话移除数据引用。
+     * <p>
+     * 同时更新配额使用量。如果数据引用不存在，则不执行任何操作。
+     * <p>
+     * Removes a data reference from this session and updates quota usage.
+     * No operation if the data reference does not exist.
+     *
+     * @param dataRefId 数据引用 ID / Data reference ID
+     * @param dataSize 数据大小（字节）/ Data size in bytes
      */
     public void removeDataRef(String dataRefId, long dataSize) {
         if (this.dataRefs.remove(dataRefId)) {
@@ -168,7 +206,15 @@ public class Session {
     }
     
     /**
-     * Checks if the session can accommodate additional data.
+     * 检查会话是否可以容纳额外的数据。
+     * <p>
+     * 验证添加指定大小的数据后，是否会超出大小限制或数量限制。
+     * <p>
+     * Checks if the session can accommodate additional data without
+     * exceeding size or count limits.
+     *
+     * @param additionalSize 要添加的数据大小（字节）/ Additional data size in bytes
+     * @return true 如果配额允许添加 / if quota allows adding the data
      */
     public boolean canAddData(long additionalSize) {
         return currentDataSize + additionalSize <= maxDataSize 
@@ -176,14 +222,28 @@ public class Session {
     }
     
     /**
-     * Gets the quota information for this session.
+     * 获取会话的配额信息。
+     * <p>
+     * 返回包含最大限制和当前使用量的配额快照。
+     * <p>
+     * Gets the quota information for this session as a snapshot
+     * containing max limits and current usage.
+     *
+     * @return 会话配额记录 / Session quota record
      */
     public SessionQuota getQuota() {
         return new SessionQuota(maxDataSize, maxDataCount, currentDataSize, currentDataCount);
     }
     
     /**
-     * Checks if the session is active.
+     * 检查会话是否处于活动状态。
+     * <p>
+     * 只有活动状态的会话才能执行数据操作。
+     * <p>
+     * Checks if the session is in active state.
+     * Only active sessions can perform data operations.
+     *
+     * @return true 如果会话处于活动状态 / if session is active
      */
     public boolean isActive() {
         return state == SessionState.ACTIVE;

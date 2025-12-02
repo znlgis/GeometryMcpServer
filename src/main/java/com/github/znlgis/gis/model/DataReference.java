@@ -9,10 +9,23 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Data reference model for managing GIS data with metadata and lifecycle.
- * 
- * This entity represents a reference to stored GIS data with associated
- * metadata, session information, and lifecycle management properties.
+ * 数据引用实体，用于管理 GIS 数据的元数据和生命周期。
+ * <p>
+ * 该实体存储对 GIS 数据的引用，包含：
+ * <ul>
+ *   <li>唯一标识符 (UUID) 和会话关联</li>
+ *   <li>数据类型 (矢量/栅格/要素集合) 和格式信息</li>
+ *   <li>空间元数据：边界范围、坐标系、要素数量</li>
+ *   <li>生命周期管理：创建时间、访问时间、过期时间、引用计数</li>
+ *   <li>状态跟踪：支持完整的数据生命周期状态转换</li>
+ * </ul>
+ * <p>
+ * Data reference entity for managing GIS data metadata and lifecycle.
+ * This entity stores references to GIS data with associated metadata,
+ * session information, spatial properties, and lifecycle management properties.
+ *
+ * @see DataState 数据生命周期状态枚举
+ * @see DataType 数据类型枚举
  */
 @Entity
 @Table(name = "data_references")
@@ -232,7 +245,13 @@ public class DataReference {
     }
     
     /**
-     * Updates the last accessed timestamp and extends TTL.
+     * 更新最后访问时间戳并延长 TTL (生存时间)。
+     * <p>
+     * 每次数据被访问时调用此方法，将过期时间延长 24 小时。
+     * 这是实现 LRU (最近最少使用) 淘汰策略的基础。
+     * <p>
+     * Updates the last accessed timestamp and extends the TTL (Time To Live).
+     * Called whenever the data is accessed, extending expiration by 24 hours.
      */
     public void touch() {
         this.lastAccessedAt = Instant.now();
@@ -240,14 +259,26 @@ public class DataReference {
     }
     
     /**
-     * Increments the reference count.
+     * 增加引用计数。
+     * <p>
+     * 当其他数据通过派生关系引用此数据时调用。
+     * 引用计数大于 0 的数据将受到保护，不会被自动清理。
+     * <p>
+     * Increments the reference count when this data is referenced by derived data.
+     * Data with reference count > 0 is protected from automatic cleanup.
      */
     public void incrementReferenceCount() {
         this.referenceCount++;
     }
     
     /**
-     * Decrements the reference count.
+     * 减少引用计数。
+     * <p>
+     * 当引用此数据的派生数据被删除时调用。
+     * 引用计数不会减少到 0 以下。
+     * <p>
+     * Decrements the reference count when referencing derived data is deleted.
+     * Reference count will not go below 0.
      */
     public void decrementReferenceCount() {
         if (this.referenceCount > 0) {
@@ -256,7 +287,14 @@ public class DataReference {
     }
     
     /**
-     * Checks if the data has expired.
+     * 检查数据是否已过期。
+     * <p>
+     * 过期的数据将在下一次清理任务中被标记为待删除。
+     * <p>
+     * Checks if the data has expired based on its TTL.
+     * Expired data will be marked for deletion in the next cleanup cycle.
+     *
+     * @return true 如果当前时间已超过过期时间 / if current time is after expiration time
      */
     public boolean isExpired() {
         return Instant.now().isAfter(expiresAt);
